@@ -10,7 +10,7 @@ spec:
     # kubernetes.io/hostname: 'grace.sciclone.wm.edu'
   containers:
     - name: dev-pod
-      image: ghcr.io/stmorse/gg:latest
+      image: ghcr.io/stmorse/sgg:latest
       # image: pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
       resources:
         requests:
