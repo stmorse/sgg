@@ -1,3 +1,7 @@
+"""
+This version pulls over the entire time period and saves to CSV.
+"""
+
 import argparse
 import configparser
 import gc
