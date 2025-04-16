@@ -30,7 +30,8 @@ class GNN(nn.Module):
         return x
 
 if __name__ == "__main__":
-    # Quick test run: dummy data
+    print('Testing dummy data...')
+    
     num_nodes = 10
     in_channels = 16
     out_channels = 16
@@ -38,9 +39,12 @@ if __name__ == "__main__":
     dummy_edge_index = torch.tensor([[0, 1, 2, 3, 4, 5],
                                      [1, 2, 3, 4, 5, 6]], dtype=torch.long)
     dummy_edge_weight = torch.ones(dummy_edge_index.size(1))
+    
+    print('Creating data object...')
     from torch_geometric.data import Data
     dummy_data = Data(x=dummy_x, edge_index=dummy_edge_index, edge_weight=dummy_edge_weight)
     
+    print('Forward pass of GNN...')
     model = GNN(in_channels, out_channels)
     output = model(dummy_data)
     print("Output shape:", output.shape)

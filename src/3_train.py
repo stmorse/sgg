@@ -39,20 +39,25 @@ def evaluate(model, data, mask, criterion):
     return criterion(out[mask], data.y[mask]).item()
 
 def main():
+    GRAPH_PATH = "/sciclone/geograd/stmorse/reddit/subreddit/science/links/graph_2007-2007_filtered.json"
+    FEAT0_PATH = "/sciclone/geograd/stmorse/reddit/subreddit/science/users/user_label_counts_2007_filtered.csv.npy"
+    FEAT1_PATH = "/sciclone/geograd/stmorse/reddit/subreddit/science/users/user_label_counts_2008_filtered.csv.npy"
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--graph_json", type=str, required=True,
-                        help="Path to graph JSON (from previous script)")
-    parser.add_argument("--features_t0", type=str, required=True,
-                        help="Path to .npy file with t0 features")
-    parser.add_argument("--features_t1", type=str, required=True,
-                        help="Path to .npy file with t1 features")
-    parser.add_argument("--epochs", type=int, default=100, help="Training epochs")
-    parser.add_argument("--lr", type=float, default=0.01, help="Learning rate")
-    parser.add_argument("--train_ratio", type=float, default=0.7, help="Fraction of nodes for training")
-    parser.add_argument("--val_ratio", type=float, default=0.15, help="Fraction for validation")
+    parser.add_argument("--graph_json", type=str, required=False,
+                        default=GRAPH_PATH)
+    parser.add_argument("--features_t0", type=str, required=False,
+                        default=FEAT0_PATH)
+    parser.add_argument("--features_t1", type=str, required=False,
+                        default=FEAT1_PATH)
+    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument("--lr", type=float, default=0.01)
+    parser.add_argument("--train_ratio", type=float, default=0.7)
+    parser.add_argument("--val_ratio", type=float, default=0.15)
     args = parser.parse_args()
 
     # Load graph JSON: expects "user_to_idx", "edge_index", "edge_weight"
+    print(f'Loading graph from {args.graph_json}')
     with open(args.graph_json, "r") as f:
         graph = json.load(f)
     user_to_idx = graph["user_to_idx"]
@@ -61,6 +66,7 @@ def main():
     edge_weight = torch.tensor(graph["edge_weight"], dtype=torch.float)
 
     # Load node features (t0 and t1); rows must match user_to_idx order.
+    print(f'Loading node features from {args.features_t0} and {args.features_t1}')
     feats_t0 = np.load(args.features_t0)  # shape (num_nodes, k)
     feats_t1 = np.load(args.features_t1)  # shape (num_nodes, k)
     assert feats_t0.shape[0] == num_nodes and feats_t1.shape[0] == num_nodes, "Mismatch in node count."
@@ -68,13 +74,16 @@ def main():
     x = torch.tensor(feats_t0, dtype=torch.float)
     y = torch.tensor(feats_t1, dtype=torch.float)
 
+    print('Creating data object...')
     data = Data(x=x, y=y, edge_index=edge_index, edge_weight=edge_weight)
 
+    print('Splitting masks...')
     train_mask, val_mask, test_mask = split_masks(num_nodes, args.train_ratio, args.val_ratio)
     data.train_mask = train_mask
     data.val_mask = val_mask
     data.test_mask = test_mask
 
+    print('Initializing model...')
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     data = data.to(device)
     model = GNN(in_channels=x.size(1), out_channels=y.size(1)).to(device)
@@ -84,6 +93,7 @@ def main():
     best_val = float("inf")
     best_state = None
 
+    print('Beginning training...')
     for epoch in range(1, args.epochs + 1):
         t_loss = train_epoch(model, data, train_mask, optimizer, criterion)
         v_loss = evaluate(model, data, val_mask, criterion)
