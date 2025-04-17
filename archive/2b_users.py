@@ -1,3 +1,8 @@
+"""
+Summary:
+(Older) Converted user count CSV to normalized ndarray.
+"""
+
 import os
 
 import numpy as np

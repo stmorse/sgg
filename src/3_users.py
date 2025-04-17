@@ -1,7 +1,15 @@
 """
-This version of users*.py pulls **by year** instead of over the entire time
-period.  For each year, it finds the top `q` users by total posts, stores their
-participation in each cluster, and saves this to file (csv).
+Summary:
+Stores CSV of topic participation (year level) for top q users.
+
+Details:
+% = reddit directory
+
+- Loads metadata (%/metadata), labels (%/subreddit/<name>/labels)
+- Joins metadata + labels, filters by top users (total posts)
+- Pivots to get users -> participation by label
+Saves:
+  user_label_counts_{year}.csv (uncompressed) -> %/subreddit/<name>/users
 """
 
 import argparse
@@ -80,7 +88,7 @@ def get_users(
 
         # Save the user-label counts to a CSV file
         user_label_counts.to_csv(
-            os.path.join(user_path, f'user_label_counts_{year}.csv')
+            os.path.join(user_path, f'user_counts_{year}.csv')
         )
 
     print(f'Complete. ({time.time()-t0:.3f})')
@@ -88,20 +96,20 @@ def get_users(
 
 if __name__=="__main__":
     config = configparser.ConfigParser()
-    config.read('../config.ini')
+    config.read('config.ini')  #<- run from root directory
     g = config['general']
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--subpath', type=str, required=True)
+    # parser.add_argument('--subpath', type=str, required=True)
     parser.add_argument('--subreddit', type=str, required=True)
-    parser.add_argument('--start-year', type=int, required=True)
-    parser.add_argument('--end-year', type=int, required=True)
-    parser.add_argument('--start-month', type=int, default=1, required=False)
-    parser.add_argument('--end-month', type=int, default=12, required=False)
+    parser.add_argument('--start_year', type=int, required=True)
+    parser.add_argument('--end_year', type=int, required=True)
+    parser.add_argument('--start_month', type=int, default=1, required=False)
+    parser.add_argument('--end_month', type=int, default=12, required=False)
     parser.add_argument('--q', type=float, default=0.1, required=False)
     args = parser.parse_args()
 
-    subpath = os.path.join(g['save_path'], args.subpath)
+    subpath = os.path.join(g['save_path'], args.subreddit)
     
     subdir = 'users'
     if not os.path.exists(os.path.join(subpath, subdir)):

@@ -1,15 +1,31 @@
 """
-For a given date range,
-- pulls and saves all metadata ---> metadata
-- find topic cluster for a specific subreddit ---> subreddit/<name>/<labels / models>
-- finds tf-idf keywords for those clusters ---> subreddit/<name>/tfidf
+Summary: 
+Finds topic clusters (and tf-idf) within a subreddit.
+
+Details:
+Define % = reddit directory
+
+First pass: by month:
+- loads metadata (%/metadata) and embeddings (%/embeddings)
+- trains cluster model for a specific subreddit 
+Saves:
+  labels -> %/subreddit/<name>/labels/labels_{year}-{month}.
+  model  -> %/subreddit/<name>/<models>
+
+Second pass: by month:
+- reloads labels (to know clusters), embeddings (to measure closeness to centroid), and sentences (to compute tfidf)
+- finds tf-idf keywords
+Saves:
+  tfidf  -> %/subreddit/<name>/tfidf
+
+TODO:
+- Need to implement for other raw file formats, and zarr embeddings
+- Implement doing multiple subreddits to reduce data loading passes
 """
 
 import argparse
 import configparser
 import gc
-import heapq        # for top-k cluster members
-import json
 import os
 import pickle
 import time
@@ -108,7 +124,7 @@ def find_topics(
     top_k_indices = {i: np.array([]) for i in range(n_clusters)}
 
     # TODO: currently this grabs top-k for each month,
-    #       but we should grab top-k over the entire date range
+    # do we want to just grab top-k over the entire date range (?)
 
     for year, month in [(yr, mo) for yr in years for mo in months]:
         print(f'Reading {year}-{month:02} ... ({time.time()-t0:.3f})')
