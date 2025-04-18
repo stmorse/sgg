@@ -1,7 +1,7 @@
 """
 Summary:
 Create a graph of coincident commenting activity over a range
-optionally filtered to within a subreddit.
+optionally filtered to within a subreddit.  No filtering on number of replies.
 
 Details:
 % = reddit dir
