@@ -1,5 +1,5 @@
 #!/bin/tcsh
-#SBATCH --job-name=sgg
+#SBATCH --job-name=sgg_g
 #SBATCH -N 1 -n 4
 #SBATCH --mem=16G
 #SBATCH --time=8:00:00
@@ -10,4 +10,4 @@ module load python/3.12.7
 svenv
 
 # Run the Python script
-python -u src/1_graph.py --start_year 2011 --end_year 2011 >& train.log
+python -u src/1_graph.py --start_year 2007 --end_year 2011 --period 6 --subreddit science >& logs/graph.log

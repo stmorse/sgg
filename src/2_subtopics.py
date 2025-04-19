@@ -110,6 +110,10 @@ def find_topics(
     with open(os.path.join(model_path, f'cc_{start_year}_{end_year}.npz'), 'wb') as f:
         np.savez_compressed(f, cc=cluster_centers, allow_pickle=False)
 
+    # save the trained model
+    with open(os.path.join(model_path, f'model_{start_year}_{end_year}.pkl'), 'wb') as f:
+        pickle.dump(model, f)
+
     # ------
     # Second pass: save labels and top-k sentences
     # ------
@@ -224,20 +228,20 @@ def find_topics(
 
 if __name__=="__main__":
     config = configparser.ConfigParser()
-    config.read('../config.ini')
+    config.read('config.ini')  #<- run from root directory
     g = config['general']
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--subpath', type=str, required=True)
     parser.add_argument('--subreddit', type=str, required=True)
-    parser.add_argument('--start-year', type=int, required=True)
-    parser.add_argument('--end-year', type=int, required=True)
-    parser.add_argument('--start-month', type=int, default=1, required=False)
-    parser.add_argument('--end-month', type=int, default=12, required=False)
-    parser.add_argument('--n-clusters', type=int, required=True)
-    parser.add_argument('--top-k', type=int, default=100, required=False)
-    parser.add_argument('--top-m', type=int, default=20, required=False)
-    parser.add_argument('--max-df', type=float, default=0.3, required=False)
+    parser.add_argument('--start_year', type=int, required=True)
+    parser.add_argument('--end_year', type=int, required=True)
+    parser.add_argument('--start_month', type=int, default=1, required=False)
+    parser.add_argument('--end_month', type=int, default=12, required=False)
+    parser.add_argument('--n_clusters', type=int, required=True)
+    parser.add_argument('--top_k', type=int, default=100, required=False)
+    parser.add_argument('--top_m', type=int, default=20, required=False)
+    parser.add_argument('--max_df', type=float, default=0.3, required=False)
     args = parser.parse_args()
 
     subpath = os.path.join(g['save_path'], args.subpath)

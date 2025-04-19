@@ -1,15 +1,15 @@
 """
 Summary:
-Stores CSV of topic participation (year level) for top q users.
+Stores CSV of topic participation for top q users for each period.
 
 Details:
 % = reddit directory
 
 - Loads metadata (%/metadata), labels (%/subreddit/<name>/labels)
 - Joins metadata + labels, filters by top users (total posts)
-- Pivots to get users -> participation by label
+- Pivots to get users -> participation by label for each period (in months)
 Saves:
-  user_label_counts_{year}.csv (uncompressed) -> %/subreddit/<name>/users
+  user_label_counts_{start}_{end}.csv (uncompressed) -> %/subreddit/<name>/users
 """
 
 import argparse
@@ -19,6 +19,28 @@ import time
 
 import numpy as np
 import pandas as pd
+
+def iterate_periods(start_year: int, start_month: int, end_year: int, end_month: int, period: int):
+    """
+    Yields tuples (p_start_year, p_start_month, p_end_year, p_end_month) for contiguous periods.
+    Period is specified in months.
+    """
+    # Convert dates to a month index (0-indexed)
+    start_idx = start_year * 12 + (start_month - 1)
+    end_idx = end_year * 12 + (end_month - 1)
+    
+    p = period
+    current = start_idx
+    while current <= end_idx:
+        p_start_idx = current
+        p_end_idx = min(current + p - 1, end_idx)
+        # Convert back to year, month
+        p_start_year = p_start_idx // 12
+        p_start_month = (p_start_idx % 12) + 1
+        p_end_year = p_end_idx // 12
+        p_end_month = (p_end_idx % 12) + 1
+        yield (p_start_year, p_start_month, p_end_year, p_end_month)
+        current += p
 
 def get_users(
     meta_path: str,
@@ -30,36 +52,48 @@ def get_users(
     start_month: int,
     end_month: int,
     q: float,
+    period: int,
 ):
     t0 = time.time()
-    years = range(start_year, end_year+1)
-    months = range(start_month, end_month+1)
-    
     print(f'CPU count  : {os.cpu_count()}')
     print(f'Subreddit  : {subreddit}')
-    print(f'Range      : {start_year}-{start_month} to {end_year}-{end_month}\n')
+    print(f'Range      : {start_year}-{start_month:02} to {end_year}-{end_month:02}')
+    print(f'Period     : {period} months\n')
 
-    # pull all metadata for subreddit and get top q-th users
-    for year in years:
-        # this will hold metadata for all top users *for the year*
+    # Iterate over periods
+    for (p_start_year, p_start_month, p_end_year, p_end_month) in iterate_periods(start_year, start_month, end_year, end_month, period):
         all_top_users_metadata = []
-
-        for month in months:
+        # Compute the list of months for this period
+        period_start_idx = p_start_year * 12 + (p_start_month - 1)
+        period_end_idx = p_end_year * 12 + (p_end_month - 1)
+        months_in_period = [m for m in range(period_start_idx, period_end_idx + 1)]
+        
+        for m in months_in_period:
+            year = m // 12
+            month = (m % 12) + 1
             print(f'Reading {year}-{month:02} ... ({time.time()-t0:.3f})')
             
             # load metadata for this subreddit
             print(f'> Loading metadata ... ({time.time()-t0:.3f})')
-            metadata = pd.read_csv(
-                os.path.join(meta_path, f'metadata_{year}-{month:02}.csv'),
-                compression='gzip',
-            )
+            filepath = os.path.join(meta_path, f'metadata_{year}-{month:02}.csv')
+            try:
+                metadata = pd.read_csv(filepath, compression='gzip')
+            except Exception as e:
+                print(f'Error reading {filepath}: {e}')
+                continue
+            
             metadata = metadata[metadata['subreddit'] == subreddit]
             print(f'> Loaded subreddit {subreddit} with {metadata.shape[0]} entries.')
 
             # load labels
             print(f'> Loading labels ... ({time.time()-t0:.3f})')
-            with open(os.path.join(label_path, f'labels_{year}-{month:02}.npz'), 'rb') as f:
-                labels = np.load(f)['labels']
+            labels_filepath = os.path.join(label_path, f'labels_{year}-{month:02}.npz')
+            try:
+                with open(labels_filepath, 'rb') as f:
+                    labels = np.load(f)['labels']
+            except Exception as e:
+                print(f'Error reading {labels_filepath}: {e}')
+                continue
 
             # Add labels as a column of metadata
             metadata['label'] = labels
@@ -68,29 +102,29 @@ def get_users(
             print(f'> Building top users ... ({time.time()-t0:.3f})')
             user_counts = metadata['author'].value_counts()
             top_users = user_counts[user_counts >= user_counts.quantile(1 - q)]
-            # all_top_users.append(top_users)
-
             # Filter metadata to include only top users
             top_users_metadata = metadata[metadata['author'].isin(top_users.index)]
             all_top_users_metadata.append(top_users_metadata)
 
-        # concatenate into one table
-        print(f'\nComplete with build. Saving ... ({time.time()-t0:.3f})')
-        all_top_users_metadata = pd.concat(all_top_users_metadata)
+        if not all_top_users_metadata:
+            print("No metadata loaded for this period; skipping.")
+            continue
+
+        # Concatenate metadata for the period
+        print(f'\nComplete period {p_start_year}-{p_start_month:02} to {p_end_year}-{p_end_month:02}. Saving ... ({time.time()-t0:.3f})')
+        period_metadata = pd.concat(all_top_users_metadata)
 
         # Create a pivot table with users as rows and labels as columns
-        user_label_counts = all_top_users_metadata.pivot_table(
+        user_label_counts = period_metadata.pivot_table(
             index='author', 
             columns='label', 
             aggfunc='size', 
             fill_value=0
         )
 
-        # Save the user-label counts to a CSV file
-        user_label_counts.to_csv(
-            os.path.join(user_path, f'user_counts_{year}.csv')
-        )
-
+        # Name output file with period boundaries
+        out_filename = f"user_counts_{p_start_year}-{p_start_month:02}_to_{p_end_year}-{p_end_month:02}.csv"
+        user_label_counts.to_csv(os.path.join(user_path, out_filename))
     print(f'Complete. ({time.time()-t0:.3f})')
 
 
@@ -100,17 +134,16 @@ if __name__=="__main__":
     g = config['general']
 
     parser = argparse.ArgumentParser()
-    # parser.add_argument('--subpath', type=str, required=True)
     parser.add_argument('--subreddit', type=str, required=True)
     parser.add_argument('--start_year', type=int, required=True)
     parser.add_argument('--end_year', type=int, required=True)
     parser.add_argument('--start_month', type=int, default=1, required=False)
     parser.add_argument('--end_month', type=int, default=12, required=False)
     parser.add_argument('--q', type=float, default=0.1, required=False)
+    parser.add_argument('--period', type=int, default=12, help="Period in months for aggregation")
     args = parser.parse_args()
 
     subpath = os.path.join(g['save_path'], args.subreddit)
-    
     subdir = 'users'
     if not os.path.exists(os.path.join(subpath, subdir)):
         os.makedirs(os.path.join(subpath, subdir))
@@ -125,4 +158,5 @@ if __name__=="__main__":
         start_month=args.start_month,
         end_month=args.end_month,
         q=args.q,
+        period=args.period,
     )
