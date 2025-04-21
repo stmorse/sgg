@@ -123,7 +123,7 @@ def get_users(
         )
 
         # Name output file with period boundaries
-        out_filename = f"user_counts_{p_start_year}-{p_start_month:02}_to_{p_end_year}-{p_end_month:02}.csv"
+        out_filename = f"user_counts_{p_start_year}-{p_start_month:02}_{p_end_year}-{p_end_month:02}.csv"
         user_label_counts.to_csv(os.path.join(user_path, out_filename))
     print(f'Complete. ({time.time()-t0:.3f})')
 

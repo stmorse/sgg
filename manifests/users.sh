@@ -10,5 +10,5 @@ module load python/3.12.7
 svenv
 
 # Run subtopic clustering
-python -u src/3_users.py --subreddit science --start_year 2007 --end_year 2009 --q 0.75 --period 6 >& logs/users.log
+python -u src/3_users.py --subreddit science --start_year 2010 --end_year 2011 --q 0.75 --period 6 >& logs/users.log
 

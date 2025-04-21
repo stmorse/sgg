@@ -105,7 +105,7 @@ def main():
         fname = f"graph_{y0}-{m0:02d}_{y1}-{m1:02d}.json"
         out_dir = SAVEPATH_SR if args.subreddit else SAVEPATH
         if args.subreddit:
-            out_dir = os.path.join(out_dir, args.subreddit, f"graphs{args.period}")
+            out_dir = os.path.join(out_dir, args.subreddit, f"graphs")
         os.makedirs(out_dir, exist_ok=True)
         outpath = os.path.join(out_dir, fname)
         print(f"Building graph for {y0}-{m0:02d} → {y1}-{m1:02d}, saving to {outpath}")
