@@ -1,11 +1,11 @@
 """
 Inputs: co-reply graphs & user counts aggregated per period
-Outputs: filtered graphs and filtered+normalized user features
-(Filter: users must be active in ≥T periods)
-Supports arbitrary-length month windows, with LOCF+decay for missing activity.
+Outputs: filtered graphs and filtered + normalized user features
+(Filter: users must be active in >=T periods)
+arbitrary-length month windows, with LOCF+decay for missing activity.
 """
 
-# Global paths — edit these to match your setup
+# Global paths
 GRAPH_DIR         = '/sciclone/geograd/stmorse/reddit/subreddit/science/graphs'
 FEATURES_DIR      = '/sciclone/geograd/stmorse/reddit/subreddit/science/users'
 OUT_GRAPH_DIR     = '/sciclone/geograd/stmorse/reddit/subreddit/science/filtered'
@@ -45,7 +45,7 @@ def main():
     parser.add_argument('--decay',        type=float, default=0.9)
     args = parser.parse_args()
 
-    # 0) compute windows
+    # compute windows
     idx0    = month_index(args.start_year, args.start_month)
     idx_end = month_index(args.end_year,   args.end_month)
     windows = []
@@ -57,7 +57,7 @@ def main():
         windows.append((y0, m0, y1, m1))
         i += args.period
 
-    # 1) gather authors present per window
+    # gather authors present per window
     presence = {}
     for w in windows:
         y0,m0,y1,m1 = w
@@ -65,7 +65,7 @@ def main():
         df = pd.read_csv(os.path.join(FEATURES_DIR, fn), usecols=['author'])
         presence[w] = set(df['author'])
 
-    # 2) count across windows
+    # count across windows
     counts = {}
     for authors in presence.values():
         for u in authors:
@@ -74,7 +74,7 @@ def main():
     global_authors = sorted([u for u, c in counts.items() if c >= args.min_periods])
     global_u2i = {u: i for i, u in enumerate(global_authors)}
 
-    # 3) save authors meta CSV (binary flags)
+    # save authors meta CSV (binary flags)
     meta = pd.DataFrame({'author': global_authors})
     for w in windows:
         col = f'{w[0]}-{w[1]:02d}_{w[2]}-{w[3]:02d}'
@@ -82,7 +82,7 @@ def main():
     meta.to_csv(AUTHORS_META_FILE, index=False)
     print(f'Saved authors (n={len(global_authors)}) to {AUTHORS_META_FILE}')
 
-    # 4) filter graphs per window
+    # filter graphs per window
     for w in windows:
         y0,m0,y1,m1 = w
         gfn = f'graph_{y0}-{m0:02d}_{y1}-{m1:02d}.json'
@@ -106,7 +106,7 @@ def main():
             json.dump(out, f)
         print(f'Filtered graph {out_fn}: nodes={len(global_authors)}, edges={len(new_w)}')
 
-    # 5) filter & normalize features with LOCF+decay
+    # filter & normalize features with LOCF+decay
     prev_feat = None
     for w in windows:
         y0,m0,y1,m1 = w
