@@ -11,6 +11,7 @@ import torch
 import torch.nn.functional as F
 from torch_geometric.data import Data
 import torch.optim as optim
+from sklearn.metrics import roc_auc_score
 
 from models import EdgeEncoder, EdgeDecoder, FeatureDecoder
 
@@ -109,9 +110,10 @@ def main():
     num_nodes, in_dim = x0.shape
 
     # model
-    encoder = EdgeEncoder(in_channels=in_dim, hidden_channels=64, edge_latent_dim=32).to(device)
-    edge_decoder = EdgeDecoder(edge_latent_dim=32).to(device)
-    feat_decoder = FeatureDecoder(edge_latent_dim=32, out_features=in_dim).to(device)
+    edge_latent_dim = 2
+    encoder = EdgeEncoder(in_channels=in_dim, hidden_channels=64, edge_latent_dim=edge_latent_dim).to(device)
+    edge_decoder = EdgeDecoder(edge_latent_dim=edge_latent_dim).to(device)
+    feat_decoder = FeatureDecoder(edge_latent_dim=edge_latent_dim, out_features=in_dim).to(device)
 
     params = list(encoder.parameters()) + \
              list(edge_decoder.parameters()) + \
@@ -132,6 +134,9 @@ def main():
 
         edge_losses, feat_losses = [], []
         val_edge_losses, val_feat_losses = [], []
+
+        train_preds, train_labels = [], []
+        val_preds, val_labels = [], []
 
         for (y0, m0, y1, m1), (yn0, mn0, yn1, mn1) in pairs:
             # load current graph
@@ -191,6 +196,13 @@ def main():
             tr_mask, va_mask, _ = split_masks(
                 preds.size(0), args.train_ratio, args.val_ratio, device=device
             )
+
+            # Collect predictions and labels for ROC-AUC
+            train_preds.append(preds[tr_mask].detach().cpu().numpy())
+            train_labels.append(labels[tr_mask].detach().cpu().numpy())
+            val_preds.append(preds[va_mask].detach().cpu().numpy())
+            val_labels.append(labels[va_mask].detach().cpu().numpy())
+
             edge_loss = crit_edge(preds[tr_mask], labels[tr_mask])
             edge_losses.append(edge_loss)
 
@@ -217,6 +229,16 @@ def main():
 
         avg_tr = train_loss / len(pairs)
         avg_va = val_loss   / len(pairs)
+
+        # Compute ROC-AUC for train and validation
+        train_preds = np.concatenate(train_preds)
+        train_labels = np.concatenate(train_labels)
+        val_preds = np.concatenate(val_preds)
+        val_labels = np.concatenate(val_labels)
+
+        train_auc = roc_auc_score(train_labels, train_preds)
+        val_auc = roc_auc_score(val_labels, val_preds)
+
         if avg_va < best_val:
             best_val = avg_va
             best_state = {
@@ -231,7 +253,8 @@ def main():
                 f"Feat {np.mean([f.cpu().item() for f in feat_losses]):.4f}) | "
                 f"Val Loss={avg_va:.4f} "
                 f"(Edge {np.mean([ve.cpu().item() for ve in val_edge_losses]):.4f} "
-                f"Feat {np.mean([vf.cpu().item() for vf in val_feat_losses]):.4f})"
+                f"Feat {np.mean([vf.cpu().item() for vf in val_feat_losses]):.4f}) "
+                f"Train AUC={train_auc:.4f} | Val AUC={val_auc:.4f}"
             )
 
         edge_losses, feat_losses = [], []
