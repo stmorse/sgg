@@ -22,8 +22,6 @@ def get_metadata(
     ):
     
     t0 = time.time()
-    years = range(start_year, end_year+1)
-    months = range(start_month, end_month+1)
     
     print(f'Reading data from path  : {data_path}')
     print(f'Saving metadata to path : {save_path}\n')
@@ -87,7 +85,7 @@ if __name__=="__main__":
     parser.add_argument('--end_year', type=int, required=True)
     parser.add_argument('--start_month', type=int, default=1, required=False)
     parser.add_argument('--end_month', type=int, default=12, required=False)
-    parser.add_argument('--chunk_size', type=int, default=100000, required=False)
+    parser.add_argument('--chunk_size', type=int, default=1000000, required=False)
     args = parser.parse_args()
     
     get_metadata(

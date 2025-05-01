@@ -52,7 +52,7 @@ def find_topics(
     end_month: int,
     top_k: int,
     top_m: int,
-    max_df: float
+    max_df: float,
 ):
     """
     1. load metadata of subreddit
@@ -76,7 +76,13 @@ def find_topics(
     # ------
 
     # initialize model
-    model = MiniBatchKMeans(n_clusters=n_clusters)
+    # model = MiniBatchKMeans(n_clusters=n_clusters)
+
+    # TODO: make this a parameter controlled thing
+    with open(os.path.join(model_path, f'model_2007_2011.pkl'), 'rb') as f:
+        model = pickle.load(f)
+
+    print(f'Debug: {model.cluster_centers_.shape}')
 
     # save subreddit indices so we don't have to load metadata on second pass
     sr_idx = {}
