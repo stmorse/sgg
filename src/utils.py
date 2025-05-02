@@ -7,6 +7,7 @@ import zstandard as zstd  # for .zst
 import zarr
 
 import numpy as np
+import torch
 
 DATA_PATH = '/sciclone/data10/twford/reddit/reddit/comments/'
 EMBED_PATH = '/sciclone/geograd/stmorse/reddit/embeddings'
@@ -19,6 +20,51 @@ def iterate_months(s_year, s_month, e_year, e_month):
         if month > 12:
             month = 1
             year += 1
+
+def month_index(year, month):
+    return year * 12 + (month - 1)
+
+def idx_to_ym(idx):
+    return idx // 12, (idx % 12) + 1
+
+def parse_windows(sy, sm, ey, em, period):
+    start = month_index(sy, sm)
+    end   = month_index(ey, em)
+    wins = []
+    i = start
+    while i <= end:
+        j = min(i + period - 1, end)
+        wins.append((*idx_to_ym(i), *idx_to_ym(j)))
+        i += period
+    return wins
+
+def split_masks(n, train_ratio, val_ratio, seed=314):
+    """Helper function to get train/validation indices"""
+    np.random.seed(seed)
+    idx = np.random.permutation(n)
+    t_end = int(train_ratio * n)
+    v_end = t_end + int(val_ratio * n)
+    tr_idx = idx[:t_end]
+    va_idx = idx[t_end:v_end]
+    tr_mask = np.zeros(n, bool)
+    tr_mask[tr_idx] = True
+    va_mask = np.zeros(n, bool)
+    va_mask[va_idx] = True
+    return tr_mask, va_mask
+
+def sample_negative_edges(num_nodes, pos_set, num_samples, device):
+    """Get random set of edges not in pos_set"""
+    neg = set()
+    while len(neg) < num_samples:
+        cand = torch.randint(0, num_nodes, (num_samples*2,2), device=device)
+        for u,v in cand.tolist():
+            if u==v or (u,v) in pos_set or (v,u) in pos_set:
+                continue
+            neg.add((u,v))
+            if len(neg)>=num_samples: break
+    src = torch.tensor([u for u,v in neg], dtype=torch.long, device=device)
+    dst = torch.tensor([v for u,v in neg], dtype=torch.long, device=device)
+    return torch.stack([src,dst], dim=0)
 
 def open_compressed(file_path):
     if file_path.endswith('.bz2'):

@@ -74,7 +74,7 @@ class FeatureDecoder(nn.Module):
 
 
 # ----
-# Simple GNN
+# Simple GNNs
 # ----
 
 class GNN(nn.Module):
@@ -102,6 +102,27 @@ class GNN(nn.Module):
         # Final prediction layer maps to t1 feature space.
         x = self.fc(x)
         return x
+
+class GCNFeat(torch.nn.Module):
+    """Simple 2-layer GCN for baseline testing"""
+
+    def __init__(self, in_dim, hidden_dim, out_dim):
+        super().__init__()
+        self.conv1 = GCNConv(in_dim, hidden_dim)
+        self.conv2 = GCNConv(hidden_dim, out_dim)
+    
+    def forward(self, x, edge_index):
+        h = F.relu(self.conv1(x, edge_index))
+        return self.conv2(h, edge_index)
+
+class SimpleGCN(torch.nn.Module):
+    def __init__(self, in_dim, hidden_dim):
+        super().__init__()
+        self.conv = GCNConv(in_dim, hidden_dim)
+        
+    def forward(self, x, edge_index):
+        h = F.relu(self.conv(x, edge_index))
+        return h
 
 if __name__ == "__main__":
     print('Testing dummy data...')
