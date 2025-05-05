@@ -10,4 +10,7 @@ module load python/3.12.7
 svenv
 
 # Run the Python script
-python -u src/1_graph.py --start_year 2007 --end_year 2011 --period 6 --subreddit science >& logs/graph.log
+python -u src/1_graph.py \
+  --start_year 2012 --end_year 2012 --period 6 \
+  --subreddit science \
+  >& logs/graph.log

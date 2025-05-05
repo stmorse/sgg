@@ -9,9 +9,9 @@ from torch_geometric.nn import GCNConv
 from sklearn.metrics import roc_auc_score
 
 from models import SimpleGCN
-from utils import parse_windows
+from utils import iterate_periods
 
-BASE_PATH = '/sciclone/geograd/stmorse/reddit/subreddit/science/filtered'
+BASE_PATH = '/sciclone/geograd/stmorse/reddit/subreddit/science/filtered2'
 
 def sample_negative_edges(n_nodes, pos_set, n_samples, device):
     neg = set()
@@ -39,15 +39,13 @@ def main(args):
     print(f'Device: {device}')
 
     # 1) build window‐pairs
-    wins  = parse_windows(
+    wins  = [w for w in iterate_periods(
         args.start_year, args.start_month,
         args.end_year,   args.end_month,
         args.period
-    )
+    )]
     pairs = list(zip(wins, wins[1:]))
-    if len(pairs) < args.num_test + 2:
-        raise ValueError("Not enough window‐pairs for that many test splits")
-
+    
     # train vs test split
     train_pairs = pairs[:-args.num_test]
     test_pairs  = pairs[-args.num_test:]

@@ -8,9 +8,9 @@ arbitrary-length month windows, with LOCF+decay for missing activity.
 # Global paths
 GRAPH_DIR         = '/sciclone/geograd/stmorse/reddit/subreddit/science/graphs'
 FEATURES_DIR      = '/sciclone/geograd/stmorse/reddit/subreddit/science/users'
-OUT_GRAPH_DIR     = '/sciclone/geograd/stmorse/reddit/subreddit/science/filtered'
-OUT_FEATURES_DIR  = '/sciclone/geograd/stmorse/reddit/subreddit/science/filtered'
-AUTHORS_META_FILE = '/sciclone/geograd/stmorse/reddit/subreddit/science/filtered/authors_intersection.csv'
+OUT_GRAPH_DIR     = '/sciclone/geograd/stmorse/reddit/subreddit/science/filtered2'
+OUT_FEATURES_DIR  = '/sciclone/geograd/stmorse/reddit/subreddit/science/filtered2'
+AUTHORS_META_FILE = '/sciclone/geograd/stmorse/reddit/subreddit/science/filtered2/authors_intersection.csv'
 
 import os
 import json
@@ -18,48 +18,19 @@ import argparse
 
 import numpy as np
 import pandas as pd
-from utils import iterate_months
 
+from utils import iterate_periods
 
-def month_index(year, month):
-    return year * 12 + (month - 1)
-
-def idx_to_ym(idx):
-    return idx // 12, (idx % 12) + 1
-
-
-def ensure_dirs():
-    os.makedirs(OUT_GRAPH_DIR, exist_ok=True)
-    os.makedirs(OUT_FEATURES_DIR, exist_ok=True)
-    os.makedirs(os.path.dirname(AUTHORS_META_FILE), exist_ok=True)
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--start_year',   type=int, required=True)
-    parser.add_argument('--start_month',  type=int, default=1)
-    parser.add_argument('--end_year',     type=int, required=True)
-    parser.add_argument('--end_month',    type=int, default=12)
-    parser.add_argument('--period',       type=int, required=True)
-    parser.add_argument('--min_periods',  type=int, required=True)  # min periods with activity to keep a user
-    parser.add_argument('--decay',        type=float, default=0.9)
-    args = parser.parse_args()
-
+def main(args):
     # compute windows
-    idx0    = month_index(args.start_year, args.start_month)
-    idx_end = month_index(args.end_year,   args.end_month)
-    windows = []
-    i = idx0
-    while i <= idx_end:
-        j = min(i + args.period - 1, idx_end)
-        y0, m0 = idx_to_ym(i)
-        y1, m1 = idx_to_ym(j)
-        windows.append((y0, m0, y1, m1))
-        i += args.period
+    sy, sm, ey, em, p = (
+        args.start_year, args.start_month, args.end_year, args.end_month,
+        args.period
+    )
 
     # gather authors present per window
     presence = {}
-    for w in windows:
+    for w in iterate_periods(sy, sm, ey, em, p):
         y0,m0,y1,m1 = w
         fn = f'user_counts_{y0}-{m0:02d}_{y1}-{m1:02d}.csv'
         df = pd.read_csv(os.path.join(FEATURES_DIR, fn), usecols=['author'])
@@ -76,14 +47,14 @@ def main():
 
     # save authors meta CSV (binary flags)
     meta = pd.DataFrame({'author': global_authors})
-    for w in windows:
+    for w in iterate_periods(sy, sm, ey, em, p):
         col = f'{w[0]}-{w[1]:02d}_{w[2]}-{w[3]:02d}'
         meta[col] = meta['author'].isin(presence[w]).astype(int)
     meta.to_csv(AUTHORS_META_FILE, index=False)
     print(f'Saved authors (n={len(global_authors)}) to {AUTHORS_META_FILE}')
 
     # filter graphs per window
-    for w in windows:
+    for w in iterate_periods(sy, sm, ey, em, p):
         y0,m0,y1,m1 = w
         gfn = f'graph_{y0}-{m0:02d}_{y1}-{m1:02d}.json'
         with open(os.path.join(GRAPH_DIR, gfn)) as f:
@@ -108,7 +79,7 @@ def main():
 
     # filter & normalize features with LOCF+decay
     prev_feat = None
-    for w in windows:
+    for w in iterate_periods(sy, sm, ey, em, p):
         y0,m0,y1,m1 = w
         fn = f'user_counts_{y0}-{m0:02d}_{y1}-{m1:02d}.csv'
         df = pd.read_csv(os.path.join(FEATURES_DIR, fn)).set_index('author')
@@ -142,5 +113,18 @@ def main():
         prev_feat = feat
 
 if __name__ == '__main__':
-    ensure_dirs()
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--start_year',   type=int, required=True)
+    parser.add_argument('--start_month',  type=int, default=1)
+    parser.add_argument('--end_year',     type=int, required=True)
+    parser.add_argument('--end_month',    type=int, default=12)
+    parser.add_argument('--period',       type=int, required=True)
+    parser.add_argument('--min_periods',  type=int, required=True)  # min periods with activity to keep a user
+    parser.add_argument('--decay',        type=float, default=0.9)
+    args = parser.parse_args()
+
+    os.makedirs(OUT_GRAPH_DIR, exist_ok=True)
+    os.makedirs(OUT_FEATURES_DIR, exist_ok=True)
+    os.makedirs(os.path.dirname(AUTHORS_META_FILE), exist_ok=True)
+    
+    main(args)

@@ -79,7 +79,7 @@ def find_topics(
     # model = MiniBatchKMeans(n_clusters=n_clusters)
 
     # TODO: make this a parameter controlled thing
-    with open(os.path.join(model_path, f'model_2007_2011.pkl'), 'rb') as f:
+    with open(os.path.join(model_path, f'model_2012_2012.pkl'), 'rb') as f:
         model = pickle.load(f)
 
     print(f'Debug: {model.cluster_centers_.shape}')
@@ -102,23 +102,23 @@ def find_topics(
 
         # load embeddings for this month
         # TODO: adjust for zarr
-        print(f'> Loading embeddings ... ({time.time()-t0:.3f})')
-        embeddings = utils.load_embeddings(year, month, embed_path=embed_path)
-        embeddings = embeddings[sr_idx[(year, month)]]
+        # print(f'> Loading embeddings ... ({time.time()-t0:.3f})')
+        # embeddings = utils.load_embeddings(year, month, embed_path=embed_path)
+        # embeddings = embeddings[sr_idx[(year, month)]]
 
-        # cluster embeddings
-        print(f'> Fitting model ... ({time.time()-t0:.3f})')
-        model.partial_fit(embeddings)
+        # # cluster embeddings
+        # print(f'> Fitting model ... ({time.time()-t0:.3f})')
+        # model.partial_fit(embeddings)
 
     # we now have a trained model
     # save cluster centers
     cluster_centers = model.cluster_centers_
-    with open(os.path.join(model_path, f'cc_{start_year}_{end_year}.npz'), 'wb') as f:
-        np.savez_compressed(f, cc=cluster_centers, allow_pickle=False)
+    # with open(os.path.join(model_path, f'cc_{start_year}_{end_year}.npz'), 'wb') as f:
+    #     np.savez_compressed(f, cc=cluster_centers, allow_pickle=False)
 
-    # save the trained model
-    with open(os.path.join(model_path, f'model_{start_year}_{end_year}.pkl'), 'wb') as f:
-        pickle.dump(model, f)
+    # # save the trained model
+    # with open(os.path.join(model_path, f'model_{start_year}_{end_year}.pkl'), 'wb') as f:
+    #     pickle.dump(model, f)
 
     # ------
     # Second pass: save labels and top-k sentences

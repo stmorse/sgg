@@ -14,9 +14,9 @@ import torch.nn.functional as F
 from sklearn.metrics import roc_auc_score, mean_squared_error
 
 from models import EdgeEncoder, EdgeDecoder, FeatureDecoder
-from utils import parse_windows, sample_negative_edges
+from utils import iterate_periods, sample_negative_edges
 
-BASE = '/sciclone/geograd/stmorse/reddit/subreddit/science/filtered'
+BASE = '/sciclone/geograd/stmorse/reddit/subreddit/science/filtered2'
 
 def main(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -27,11 +27,11 @@ def main(args):
     # -----
 
     # build window-pairs
-    wins  = parse_windows(
+    wins  = [w for w in iterate_periods(
         args.start_year, args.start_month,
         args.end_year,   args.end_month,
         args.period
-    )
+    )]
     pairs = list(zip(wins, wins[1:]))
     
     # split train vs test
@@ -195,6 +195,15 @@ def main(args):
             encoder_final = enc
             edge_dec_final = ed
             feat_dec_final = fd
+
+    model_path = os.path.join(BASE, f"final_model_{last_tag1}.pth")
+    torch.save({
+        'enc': encoder_final.state_dict(),
+        'ed': edge_dec_final.state_dict(),
+        'fd': feat_dec_final.state_dict(),
+        'args': vars(args)
+    }, model_path)
+    print(f"Models saved to {model_path}")
 
     # final test-set evaluation
     print("\n=== TEST SET EVALUATION ===")

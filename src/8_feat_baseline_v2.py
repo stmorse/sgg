@@ -23,9 +23,9 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 
 from models import GCNFeat
-from utils import split_masks, parse_windows
+from utils import split_masks, iterate_periods
 
-BASE_PATH = '/sciclone/geograd/stmorse/reddit/subreddit/science/filtered'
+BASE_PATH = '/sciclone/geograd/stmorse/reddit/subreddit/science/filtered2'
 
 def run_baselines(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -36,11 +36,11 @@ def run_baselines(args):
     # -----
 
     # build period windows and pairs
-    wins  = parse_windows(
+    wins  = [w for w in iterate_periods(
         args.start_year, args.start_month,
         args.end_year,   args.end_month,
         args.period
-    )
+    )]
     pairs = list(zip(wins, wins[1:]))
     
     # split into train/val history vs test

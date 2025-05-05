@@ -20,27 +20,7 @@ import time
 import numpy as np
 import pandas as pd
 
-def iterate_periods(start_year: int, start_month: int, end_year: int, end_month: int, period: int):
-    """
-    Yields tuples (p_start_year, p_start_month, p_end_year, p_end_month) for contiguous periods.
-    Period is specified in months.
-    """
-    # Convert dates to a month index (0-indexed)
-    start_idx = start_year * 12 + (start_month - 1)
-    end_idx = end_year * 12 + (end_month - 1)
-    
-    p = period
-    current = start_idx
-    while current <= end_idx:
-        p_start_idx = current
-        p_end_idx = min(current + p - 1, end_idx)
-        # Convert back to year, month
-        p_start_year = p_start_idx // 12
-        p_start_month = (p_start_idx % 12) + 1
-        p_end_year = p_end_idx // 12
-        p_end_month = (p_end_idx % 12) + 1
-        yield (p_start_year, p_start_month, p_end_year, p_end_month)
-        current += p
+from utils import iterate_periods
 
 def get_users(
     meta_path: str,

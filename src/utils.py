@@ -12,7 +12,27 @@ import torch
 DATA_PATH = '/sciclone/data10/twford/reddit/reddit/comments/'
 EMBED_PATH = '/sciclone/geograd/stmorse/reddit/embeddings'
 
+# --------
+# Helper functions for handling year/month ranges
+# --------
+
+def month_index(year, month):
+    return year * 12 + (month - 1)
+
+def idx_to_ym(idx):
+    return idx // 12, (idx % 12) + 1
+
+def iterate_periods(sy, sm, ey, em, period):
+    start = month_index(sy, sm)
+    end   = month_index(ey, em)
+    i = start
+    while i <= end:
+        j = min(i + period - 1, end)
+        yield (*idx_to_ym(i), *idx_to_ym(j))
+        i += period
+
 def iterate_months(s_year, s_month, e_year, e_month):
+    """Yield tuples of (yr, mo) over date range"""
     year, month = s_year, s_month
     while (year < e_year) or (year == e_year and month <= e_month):
         yield year, month
@@ -21,22 +41,9 @@ def iterate_months(s_year, s_month, e_year, e_month):
             month = 1
             year += 1
 
-def month_index(year, month):
-    return year * 12 + (month - 1)
-
-def idx_to_ym(idx):
-    return idx // 12, (idx % 12) + 1
-
-def parse_windows(sy, sm, ey, em, period):
-    start = month_index(sy, sm)
-    end   = month_index(ey, em)
-    wins = []
-    i = start
-    while i <= end:
-        j = min(i + period - 1, end)
-        wins.append((*idx_to_ym(i), *idx_to_ym(j)))
-        i += period
-    return wins
+# ------
+# Helper functions for train/val/test splitting
+# ------
 
 def split_masks(n, train_ratio, val_ratio, seed=314):
     """Helper function to get train/validation indices"""
@@ -66,6 +73,10 @@ def sample_negative_edges(num_nodes, pos_set, num_samples, device):
     dst = torch.tensor([v for u,v in neg], dtype=torch.long, device=device)
     return torch.stack([src,dst], dim=0)
 
+# ------
+# Helper functions for file handling
+# ------
+
 def open_compressed(file_path):
     if file_path.endswith('.bz2'):
         return bz2.BZ2File(file_path, 'rb')
@@ -79,7 +90,6 @@ def open_compressed(file_path):
         # return dctx.read_to_iter(f)
     else:
         raise ValueError('Unsupported file extension.')
-
 
 def parse_line(line, return_type='metadata', metadata=['id'], 
                filter=True, truncate=0):
