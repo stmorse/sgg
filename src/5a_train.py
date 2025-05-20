@@ -141,6 +141,7 @@ def main(args):
                 
                 # combined
                 loss = (args.alpha * loss_f + (1-args.alpha) * loss_e)
+                # loss = loss_f + loss_e
                 loss.backward()
             
             opt.step()
